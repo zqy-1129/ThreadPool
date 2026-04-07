@@ -9,6 +9,7 @@
 #include <thread>
 #include <mutex>
 #include <unordered_map>
+#include <thread>
 
 // Any类型：可以接受任意类型的数据
 class Any
@@ -61,12 +62,19 @@ private:
 class Semaphore
 {
 public:
-    Semaphore(int limit = 0) : resLimit_(limit) {}
-    ~Semaphore() = default;
+    Semaphore(int limit = 0) 
+        : resLimit_(limit) 
+        , isExit_(false)    
+    {}
+    ~Semaphore() 
+    {
+        isExit_ = true;
+    }
 
     // 获取一个信号量资源
     void wait()
-    {
+    {   
+        if (isExit_) return;
         std::unique_lock<std::mutex> lock(mtx_);
         // 等待信号量有资源，没有资源的化会阻塞当前线程
         cond_.wait(lock, [&]()->bool {return resLimit_ > 0;});
@@ -76,11 +84,13 @@ public:
     // 增加一个信号量资源
     void post() 
     {
+        if (isExit_) return;
         std::unique_lock<std::mutex> lock(mtx_);
         resLimit_++;
         cond_.notify_all();
     }
 private:
+    std::atomic_bool isExit_;   // 线程池销毁时通知线程池中线程退出
     int resLimit_;
     std::mutex mtx_;
     std::condition_variable cond_;
