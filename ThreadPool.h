@@ -160,25 +160,6 @@ private:
     int threadId_;
 };
 
-/*
-    example:
-    ThreadPool pool;
-    pool.start();
-
-    class MyTask : public Task
-    {
-    public:    
-        MyTask(int args) : args_(args) {}
-        void run() override
-        {           
-            // 任务处理逻辑
-        }
-    private:    int args_;
-    };  
-
-    pool.submitTask(std::make_shared<MyTask>(args));
-*/
-
 // 线程池
 class ThreadPool
 {
@@ -187,7 +168,7 @@ public:
     ~ThreadPool();
 
     // 开启线程池
-    void start(int initThreadSize = 4);
+    void start(int initThreadSize = std::thread::hardware_concurrency());   // 默认线程数量为CPU核心数量
     
     // 设置线程池模式
     void setMode(PoolMode mode);
@@ -211,7 +192,6 @@ private:
     // 检查运行状态
     bool checkRunningState() const;
 
-    // std::vector<std::unique_ptr<Thread>> threads_;  // 线程列表
     std::unordered_map<int, std::unique_ptr<Thread>> threads_;  // 线程列表
     size_t initThreadSize_;                                     // 初始线程数量
     std::atomic_int currThreadSize_;                            // 当前线程数

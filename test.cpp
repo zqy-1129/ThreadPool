@@ -27,21 +27,37 @@ private:
     int end_;
 };
 
-int main() {
+// int main() {
+//     {
+//         ThreadPool pool;
+//         pool.setMode(PoolMode::MODE_CACHED);
+//         pool.start(2);
+
+//         // 一次性提交10个任务
+//         pool.submitTask(std::make_shared<MyTask>(1, 100));
+//         pool.submitTask(std::make_shared<MyTask>(1, 100));
+//         pool.submitTask(std::make_shared<MyTask>(1, 100));
+//         pool.submitTask(std::make_shared<MyTask>(1, 100));
+
+//         std::cout << "等待结果..." << std::endl;
+//         getchar();  // 等待用户输入，防止主线程过早退出
+//     }
+    
+//     return 0;
+// }
+
+int main() 
+{  
     {
         ThreadPool pool;
         pool.setMode(PoolMode::MODE_CACHED);
-        pool.start(2);
-
-        // 一次性提交10个任务
-        pool.submitTask(std::make_shared<MyTask>(1, 100));
-        pool.submitTask(std::make_shared<MyTask>(1, 100));
-        pool.submitTask(std::make_shared<MyTask>(1, 100));
-        pool.submitTask(std::make_shared<MyTask>(1, 100));
-
-        std::cout << "等待结果..." << std::endl;
-        getchar();  // 等待用户输入，防止主线程过早退出
+        pool.start(4);
+        pool.submitTask(std::make_shared<MyTask>(1, 10000));
+        pool.submitTask(std::make_shared<MyTask>(1, 10000));
+        pool.submitTask(std::make_shared<MyTask>(1, 10000));
+        pool.submitTask(std::make_shared<MyTask>(1, 10000));
+        pool.submitTask(std::make_shared<MyTask>(1, 10000));
     }
-    
+    cout << "finish" << endl;
     return 0;
 }

@@ -22,10 +22,30 @@ ThreadPool::ThreadPool()
 // 线程池析构
 ThreadPool::~ThreadPool()
 {
+    // 错误版本
+    // isPoolRunning_ = false;
+    // notEmpty_.notify_all();
+    // // 等待线程池里面所有的线程返回，阻塞和正在执行任务两种
+    // std::unique_lock<std::mutex> lock(taskQueMtx_);
+    // /**
+    //  * 项目中出现的问题：会产生死锁，当有线程在notify_all之后运行结束并运行到
+    //  * notEmpty_.wait(lock)这时候会阻塞在这里，但是notEmpty_notify_all()已经执行完了
+    //  * 不会有在通知其唤醒了，因此这里形成死锁，exitCond_等待线程数释放为零，notEmpty等待通知
+    //  */
+    // exitCond_.wait(lock, [&]()->bool {
+    //     return threads_.size() == 0;
+    // });
+
+    // 正确版本
     isPoolRunning_ = false;
-    notEmpty_.notify_all();
     // 等待线程池里面所有的线程返回，阻塞和正在执行任务两种
     std::unique_lock<std::mutex> lock(taskQueMtx_);
+    /**
+     * 项目中出现的问题：会产生死锁，当有线程在notify_all之后运行结束并运行到
+     * notEmpty_.wait(lock)这时候会阻塞在这里，但是notEmpty_notify_all()已经执行完了
+     * 不会有在通知其唤醒了，因此这里形成死锁，exitCond_等待线程数释放为零，notEmpty等待通知
+     */
+    notEmpty_.notify_all();
     exitCond_.wait(lock, [&]()->bool {
         return threads_.size() == 0;
     });
@@ -138,7 +158,8 @@ Result ThreadPool::submitTask(std::shared_ptr<Task> sp)
 void ThreadPool::threadFunc(int threadId)
 {   
     auto lastTime = std::chrono::high_resolution_clock().now();
-    while (isPoolRunning_)    
+    // while (isPoolRunning_)    // 这样是当线程池对象析构之后，不会再执行任务，所有的任务直接退出
+    for (;;)  // 这样是完成任务之后在析构
     {   
         std::shared_ptr<Task> task;
         {
@@ -153,7 +174,15 @@ void ThreadPool::threadFunc(int threadId)
 
             // 每一秒中返回一次 区分超时返回还是任务待执行返回
             while (taskQue_.empty())
-            {   
+            {       
+                // 线程池要结束，回收线程资源
+                if (!isPoolRunning_) 
+                {
+                    threads_.erase(threadId);
+                    std::cout << "tid: " << std::this_thread::get_id() << " 线程池结束，回收资源\n";
+                    exitCond_.notify_all();
+                    return; // 线程函数结束，线程结束
+                }
                 if (poolMode_ == PoolMode::MODE_CACHED)
                 {
                     if (std::cv_status::timeout == notEmpty_.wait_for(lock, std::chrono::seconds(1)))
@@ -179,15 +208,21 @@ void ThreadPool::threadFunc(int threadId)
                     notEmpty_.wait(lock);
                 }
 
-                // 线程池要结束，回收线程资源
-                if (!isPoolRunning_) 
-                {
-                    threads_.erase(threadId);
-                    std::cout << "tid: " << std::this_thread::get_id() << " 线程池结束，回收资源\n";
-                    exitCond_.notify_all();   // 通知线程池销毁函数回收线程资源
-                    return;
-                }
+                // // 线程池要结束，回收线程资源
+                // if (!isPoolRunning_) 
+                // {
+                //     threads_.erase(threadId);
+                //     std::cout << "tid: " << std::this_thread::get_id() << " 线程池结束，回收资源\n";
+                //     exitCond_.notify_all();   // 通知线程池销毁函数回收线程资源
+                //     return;
+                // }
             }
+
+            // 线程池要结束，回收线程资源
+            // if (!isPoolRunning_) 
+            // {
+            //     break;
+            // }
 
             idleThreadSize_--;
 
@@ -214,9 +249,6 @@ void ThreadPool::threadFunc(int threadId)
         lastTime = std::chrono::high_resolution_clock().now();
         idleThreadSize_++;
     }
-
-    threads_.erase(threadId);
-    std::cout << "tid: " << std::this_thread::get_id() << " 线程池结束，回收资源\n";
 }
 
 bool ThreadPool::checkRunningState() const
