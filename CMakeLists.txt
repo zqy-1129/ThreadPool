@@ -5,28 +5,20 @@ project(ThreadPool)
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
-# 动态库
-add_library(ThreadPool SHARED
-    ThreadPool.cpp
-)
+# 头文件-only 库，不需要编译，只需要声明接口
+add_library(ThreadPool INTERFACE)
 
+# 指定头文件路径（INTERFACE 表示给使用这个库的目标提供头文件）
 target_include_directories(ThreadPool
-    PUBLIC 
+    INTERFACE
     ${CMAKE_CURRENT_SOURCE_DIR}
 )
 
-# ==================== 自动安装配置（核心）====================
-# 安装动态库到 /usr/local/lib
-install(TARGETS ThreadPool
-    LIBRARY DESTINATION lib
-)
-
-# 安装头文件到 /usr/local/include
+# 安装：只需要安装头文件
 install(FILES ThreadPool.h
     DESTINATION include
 )
-# ==============================================================
 
-# 3. 测试程序
+# 测试程序
 add_executable(test test.cpp)
 target_link_libraries(test ThreadPool)

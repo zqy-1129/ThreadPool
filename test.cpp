@@ -5,59 +5,34 @@ using namespace std;
 
 #include "ThreadPool.h"
 
-/**
- * 线程池任务的返回值可能根据需求不同
- */
+int sum1(int a, int b) 
+{   
+    this_thread::sleep_for(chrono::seconds(3)); // 模拟耗时任务
+    return a + b;
+}
 
-class MyTask : public Task 
+int sum2(int a, int b, int c) 
 {
-public:
-    MyTask(int begin, int end) : begin_(begin), end_(end) {}
-    Any run() 
-    {   
-        std::this_thread::sleep_for(std::chrono::seconds(5));
-        cout << "tid: " << this_thread::get_id() << " begin!" << endl;
-        int sum = 0;
-        for (int i = begin_; i <= end_; i++) sum += i;
-        cout << "tid: " << this_thread::get_id() << " end!" << endl;
-        return sum;
-    }
-private:
-    int begin_;
-    int end_;
-};
-
-// int main() {
-//     {
-//         ThreadPool pool;
-//         pool.setMode(PoolMode::MODE_CACHED);
-//         pool.start(2);
-
-//         // 一次性提交10个任务
-//         pool.submitTask(std::make_shared<MyTask>(1, 100));
-//         pool.submitTask(std::make_shared<MyTask>(1, 100));
-//         pool.submitTask(std::make_shared<MyTask>(1, 100));
-//         pool.submitTask(std::make_shared<MyTask>(1, 100));
-
-//         std::cout << "等待结果..." << std::endl;
-//         getchar();  // 等待用户输入，防止主线程过早退出
-//     }
-    
-//     return 0;
-// }
+    this_thread::sleep_for(chrono::seconds(3)); // 模拟耗时任务
+    return a + b + c;
+}
 
 int main() 
 {  
-    {
-        ThreadPool pool;
-        pool.setMode(PoolMode::MODE_CACHED);
-        pool.start(4);
-        pool.submitTask(std::make_shared<MyTask>(1, 10000));
-        pool.submitTask(std::make_shared<MyTask>(1, 10000));
-        pool.submitTask(std::make_shared<MyTask>(1, 10000));
-        pool.submitTask(std::make_shared<MyTask>(1, 10000));
-        pool.submitTask(std::make_shared<MyTask>(1, 10000));
+    ThreadPool pool;
+    pool.setMode(PoolMode::MODE_CACHED);
+    pool.setMode(PoolMode::MODE_FIXED);
+    pool.start(4);
+    
+    vector<future<int>> results;
+    for (int i = 0; i < 4; i++) {
+        results.emplace_back(pool.submitTask(sum1, i, i + 10));
+        results.emplace_back(pool.submitTask(sum2, i, i + 10, i + 20));
     }
-    cout << "finish" << endl;
+
+    this_thread::sleep_for(chrono::seconds(5)); // 等待任务执行完成
+    for (auto& result : results) {
+        cout << "Result: " << result.get() << endl;
+    }
     return 0;
 }
